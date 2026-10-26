@@ -39,6 +39,7 @@
 	};
 	
 	chosen {
+		stdout-path = "framebuffer0";
 		bootargs = "";
 		
 		#address-cells = <2>;

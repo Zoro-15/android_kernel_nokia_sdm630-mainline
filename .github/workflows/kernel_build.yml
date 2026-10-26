@@ -22,8 +22,9 @@ jobs:
 
       - name: Install Build Dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y bc bison build-essential curl flex git libssl-dev libelf-dev lz4 python3 python-is-python3 libncurses-dev xz-utils zlib1g-dev cpio zip gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi clang lld llvm
+          sudo apt-get update -o Acquire::Retries=3 -o Acquire::http::Timeout=30
+          sudo apt-get install -y -o Acquire::Retries=3 -o Acquire::http::Timeout=30 \
+            bc bison flex libssl-dev libelf-dev lz4 gcc-aarch64-linux-gnu
 
       - name: Build Kernel (Image.gz & sdm630-nokia-pl2.dtb)
         run: |
@@ -85,8 +86,11 @@ jobs:
           # Fetch self-contained LineageOS mkbootimg tool
           curl -sL https://raw.githubusercontent.com/LineageOS/android_system_tools_mkbootimg/lineage-18.1/mkbootimg.py -o mkbootimg.py
 
-          # Extract ramdisk if prebuilt base boot image is supplied, else generate stub ramdisk
-          if [ -f "prebuilts/boot24.img" ] || [ -f "prebuilts/boot.img" ]; then
+          # Use prebuilt recovery ramdisk if present
+          if [ -f "prebuilts/ramdisk.cpio" ]; then
+            echo "Using prebuilt recovery ramdisk from prebuilts/ramdisk.cpio..."
+            cp prebuilts/ramdisk.cpio ramdisk.cpio
+          elif [ -f "prebuilts/boot24.img" ] || [ -f "prebuilts/boot.img" ]; then
             BASE_IMG=$(ls prebuilts/boot24.img prebuilts/boot.img 2>/dev/null | head -n 1)
             echo "Found base boot image: $BASE_IMG, extracting ramdisk..."
             curl -sL https://raw.githubusercontent.com/LineageOS/android_system_tools_mkbootimg/lineage-18.1/unpack_bootimg.py -o unpack_bootimg.py || true
@@ -107,19 +111,19 @@ jobs:
           fi
 
           # CMDLINE from device-nokia-pl2mainline/BoardConfig.mk
-          CMDLINE="androidboot.boot_devices=soc/c0c4000.sdhci,soc/c0c4000.mmc androidboot.hardware=nokia-pl2 androidboot.selinux=permissive androidboot.verifiedbootstate=orange androidboot.usbcontroller=a800000.dwc3 earlycon console=tty0 console=ttyMSM0,115200n8 clk_ignore_unused pd_ignore_unused firmware_class.path=/vendor/firmware/"
+          CMDLINE="androidboot.boot_devices=soc@0/c0c4000.mmc,soc/c0c4000.sdhci,c0c4000.mmc androidboot.hardware=nokia-pl2 androidboot.selinux=permissive androidboot.verifiedbootstate=orange androidboot.usbcontroller=a800000.dwc3 earlycon console=tty0 console=ttyMSM0,115200n8 clk_ignore_unused pd_ignore_unused firmware_class.path=/vendor/firmware/"
 
-          # Package boot.img: Header v2, Base 0x00000000, Pagesize 4096, Ramdisk offset 0x01000000
+          # Package boot.img: Header v0 (Mandatory for Nokia 6.1 Little Kernel aboot)
+          # Uses concatenated Image.gz-dtb
           python3 mkbootimg.py \
             --kernel artifacts/Image.gz-dtb \
             --ramdisk ramdisk.cpio \
-            --dtb artifacts/sdm630-nokia-pl2.dtb \
             --base 0x00000000 \
             --pagesize 4096 \
             --kernel_offset 0x00008000 \
             --ramdisk_offset 0x01000000 \
             --tags_offset 0x00000100 \
-            --header_version 2 \
+            --header_version 0 \
             --cmdline "$CMDLINE" \
             --os_version 10.0.0 \
             --os_patch_level 2026-10 \
@@ -181,7 +185,7 @@ jobs:
             Kernel: Linux Mainline (branch `${{ github.ref_name }}`, commit `${{ github.sha }}`).
 
             ### Artifacts Included:
-            - **`boot.img`**: Flashable Android Boot Image (Header Version 2, Base 0x00000000, Pagesize 4096, Ramdisk offset 0x01000000, cmdline configured for `sdm630-nokia-pl2`).
+            - **`boot.img`**: Flashable Android Boot Image (Header Version 0, Base 0x00000000, Pagesize 4096, Ramdisk offset 0x01000000, cmdline configured for `sdm630-nokia-pl2`).
               - Flash test: `fastboot boot boot.img`
               - Permanent flash: `fastboot flash boot boot.img`
             - **`Image.gz-dtb`**: Kernel binary with appended Nokia 6.1 DTB (`sdm630-nokia-pl2.dtb`).
