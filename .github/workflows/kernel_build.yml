@@ -5,8 +5,6 @@ on:
   push:
     branches:
       - ci-build
-      - standalone-ci
-      - qcom-sdm660-7.2.y
 
 permissions:
   contents: write
@@ -84,27 +82,28 @@ jobs:
 
       - name: Package Flashable boot.img with mkbootimg (Header v2)
         run: |
-          # Fetch LineageOS mkbootimg and unpack_bootimg tools
-          curl -sL https://raw.githubusercontent.com/LineageOS/android_system_tools_mkbootimg/lineage-21.0/mkbootimg.py -o mkbootimg.py
-          curl -sL https://raw.githubusercontent.com/LineageOS/android_system_tools_mkbootimg/lineage-21.0/unpack_bootimg.py -o unpack_bootimg.py
-          chmod +x mkbootimg.py unpack_bootimg.py
+          # Fetch self-contained LineageOS mkbootimg tool
+          curl -sL https://raw.githubusercontent.com/LineageOS/android_system_tools_mkbootimg/lineage-18.1/mkbootimg.py -o mkbootimg.py
 
           # Extract ramdisk if prebuilt base boot image is supplied, else generate stub ramdisk
           if [ -f "prebuilts/boot24.img" ] || [ -f "prebuilts/boot.img" ]; then
             BASE_IMG=$(ls prebuilts/boot24.img prebuilts/boot.img 2>/dev/null | head -n 1)
-            echo "Unpacking ramdisk from $BASE_IMG..."
-            python3 unpack_bootimg.py --boot_img "$BASE_IMG" --out unpacked_boot
-            if [ -f "unpacked_boot/ramdisk" ]; then
-              cp unpacked_boot/ramdisk ramdisk.cpio
+            echo "Found base boot image: $BASE_IMG, extracting ramdisk..."
+            curl -sL https://raw.githubusercontent.com/LineageOS/android_system_tools_mkbootimg/lineage-18.1/unpack_bootimg.py -o unpack_bootimg.py || true
+            if [ -f "unpack_bootimg.py" ]; then
+              python3 unpack_bootimg.py --boot_img "$BASE_IMG" --out unpacked_boot || true
+              if [ -f "unpacked_boot/ramdisk" ]; then
+                cp unpacked_boot/ramdisk ramdisk.cpio
+              fi
             fi
           fi
 
           if [ ! -f "ramdisk.cpio" ] || [ ! -s "ramdisk.cpio" ]; then
             echo "Creating stub cpio ramdisk..."
-            mkdir -p rd && cd rd
-            touch empty_ramdisk
-            find . | cpio -o -H newc > ../ramdisk.cpio
-            cd .. && rm -rf rd
+            mkdir -p rd
+            touch rd/placeholder
+            (cd rd && find . | cpio -o -H newc > ../ramdisk.cpio)
+            rm -rf rd
           fi
 
           # CMDLINE from device-nokia-pl2mainline/BoardConfig.mk
@@ -122,7 +121,7 @@ jobs:
             --tags_offset 0x00000100 \
             --header_version 2 \
             --cmdline "$CMDLINE" \
-            --os_version 15.0.0 \
+            --os_version 10.0.0 \
             --os_patch_level 2026-10 \
             -o artifacts/boot.img
 
@@ -155,21 +154,6 @@ jobs:
         with:
           name: build-failure-logs
           path: build_logs/
-
-      - name: Publish Failure Logs to Release
-        if: failure()
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: failure-v${{ github.run_number }}
-          name: ❌ Mainline Kernel Build Failure Logs #${{ github.run_number }}
-          body: |
-            ## ❌ Mainline Kernel Build Failed on Run #${{ github.run_number }}
-            Attached is `errors_summary.txt` and compressed `build.log.gz`.
-          files: |
-            build_logs/errors_summary.txt
-            build_logs/build.log.gz
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload Artifacts
         if: success()
