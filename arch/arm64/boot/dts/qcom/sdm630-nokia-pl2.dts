@@ -181,7 +181,6 @@
 };
 
 &adreno_gpu_zap {
-	status = "disabled";
 	firmware-name = "a508_zap.mbn";
 	memory-region = <&zap_shader_region>;
 };
@@ -278,9 +277,17 @@
 };
 
 &pm660l_wled {
-	default-brightness = <512>;
-
 	status = "okay";
+
+	default-brightness = <512>;
+	qcom,switching-freq = <800>;
+	qcom,ovp-millivolt = <29600>;
+	qcom,current-boost-limit = <970>;
+	qcom,current-limit-microamp = <20000>;
+	qcom,num-strings = <2>;
+
+	interrupts = <0x3 0xd8 0x2 IRQ_TYPE_EDGE_RISING>;
+	interrupt-names = "short";
 };
 
 &pm660_charger {
