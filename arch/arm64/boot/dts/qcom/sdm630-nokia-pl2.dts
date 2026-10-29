@@ -215,9 +215,10 @@
 	status = "okay";
 
 	touchscreen@38 {
-		compatible = "edt,edt-ft5406";
+		compatible = "focaltech,ft8716", "edt,edt-ft5406";
 		reg = <0x38>;
 		vcc-supply = <&vreg_l11a_1p8>;
+		iovcc-supply = <&vreg_l11a_1p8>;
 		pinctrl-0 = <&ts_int_active &ts_rst>;
 		pinctrl-names = "default";
 		interrupt-parent = <&tlmm>;
