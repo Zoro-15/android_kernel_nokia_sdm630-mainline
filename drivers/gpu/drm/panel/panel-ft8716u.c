@@ -9,7 +9,8 @@
 #include <linux/gpio/consumer.h>
 #include <linux/mod_devicetable.h>
 #include <linux/module.h>
-#include <linux/of_device.h>
+#include <linux/of.h>
+#include <linux/property.h>
 
 #include <drm/drm_mipi_dsi.h>
 #include <drm/drm_modes.h>
@@ -265,7 +266,7 @@ static int mdss_dsi_ft8716u_probe(struct mipi_dsi_device *dsi)
 	if (IS_ERR(ctx))
 		return PTR_ERR(ctx);
 
-	ctx->info = of_device_get_match_data(dev);
+	ctx->info = device_get_match_data(dev);
 	if (!ctx->info)
 		ctx->info = &r69338_panel_info;
 
