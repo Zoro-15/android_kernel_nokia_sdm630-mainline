@@ -67,20 +67,17 @@ jobs:
           # Fetch self-contained LineageOS mkbootimg tool
           curl -sL https://raw.githubusercontent.com/LineageOS/android_system_tools_mkbootimg/lineage-18.1/mkbootimg.py -o mkbootimg.py
 
-          # Prepare minimal ramdisk (raw/clean stub if prebuilt recovery ramdisk is omitted)
+          # Prepare minimal ramdisk
           if [ -f "prebuilts/ramdisk.cpio" ]; then
             echo "Using custom ramdisk from prebuilts/ramdisk.cpio..."
             cp prebuilts/ramdisk.cpio ramdisk.cpio
           else
-            echo "Creating minimal stub cpio ramdisk..."
-            mkdir -p rd
-            touch rd/placeholder
-            (cd rd && find . | cpio -o -H newc > ../ramdisk.cpio)
-            rm -rf rd
+            echo "ERROR: prebuilts/ramdisk.cpio not found! A genuine First-Stage Init ramdisk is required for GSI boot."
+            exit 1
           fi
 
           # CMDLINE from device-nokia-pl2mainline/BoardConfig.mk
-          CMDLINE="androidboot.boot_devices=soc@0/c0c4000.mmc,soc/c0c4000.sdhci,c0c4000.mmc androidboot.hardware=nokia-pl2 androidboot.force_normal_boot=1 androidboot.selinux=permissive androidboot.verifiedbootstate=orange androidboot.usbcontroller=a800000.dwc3 earlycon console=tty0 console=ttyMSM0,115200n8 clk_ignore_unused pd_ignore_unused firmware_class.path=/vendor/firmware/"
+          CMDLINE="androidboot.boot_devices=soc@0/c0c4000.mmc,soc/c0c4000.sdhci,c0c4000.mmc androidboot.hardware=nokia-pl2 androidboot.force_normal_boot=1 androidboot.selinux=permissive androidboot.verifiedbootstate=orange androidboot.usbcontroller=a800000.usb earlycon console=tty0 console=ttyMSM0,115200n8 clk_ignore_unused pd_ignore_unused cpuidle.off=1 firmware_class.path=/vendor/firmware/"
 
           # Package boot.img: Header v0 (Mandatory for Nokia 6.1 Little Kernel aboot)
           # Uses concatenated Image.gz-dtb
