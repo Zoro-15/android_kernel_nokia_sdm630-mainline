@@ -1,17 +1,17 @@
-name: Build Nokia 6.1 (PL2) Mainline Kernel & Boot Image
+name: Build Nokia 6.1 (PL2) Mainline GSI Boot Image
 
 on:
   workflow_dispatch:
   push:
     branches:
-      - ci-build
+      - gsi-boot
 
 permissions:
   contents: write
 
 jobs:
   build:
-    name: Build Mainline Kernel & Assemble Boot Image
+    name: Build Mainline Kernel & Assemble GSI Boot Image
     runs-on: ubuntu-24.04
 
     steps:
@@ -59,51 +59,20 @@ jobs:
           # Concatenate kernel and DTB into Image.gz-dtb
           cat out/arch/arm64/boot/Image.gz out/arch/arm64/boot/dts/qcom/sdm630-nokia-pl2.dtb > artifacts/Image.gz-dtb
 
-          cp out/arch/arm64/boot/Image.gz artifacts/Image.gz
-          cp out/arch/arm64/boot/dts/qcom/sdm630-nokia-pl2.dtb artifacts/sdm630-nokia-pl2.dtb
-
           echo "Kernel and DTB assembled successfully:"
-          ls -lh artifacts/
+          ls -lh artifacts/Image.gz-dtb
 
-      - name: Package AnyKernel3 Flashable Package
-        run: |
-          git clone --depth=1 https://github.com/osm0sis/AnyKernel3.git AnyKernel3
-          sed -i 's/device.name1=.*/device.name1=PL2/g' AnyKernel3/anykernel.sh
-          sed -i 's/device.name2=.*/device.name2=PL2_sprout/g' AnyKernel3/anykernel.sh
-          sed -i 's/device.name3=.*/device.name3=B2N/g' AnyKernel3/anykernel.sh
-          sed -i 's/device.name4=.*/device.name4=B2N_sprout/g' AnyKernel3/anykernel.sh
-          sed -i 's/device.name5=.*/device.name5=Plate2/g' AnyKernel3/anykernel.sh
-
-          cp artifacts/Image.gz-dtb AnyKernel3/Image.gz-dtb
-          cp artifacts/sdm630-nokia-pl2.dtb AnyKernel3/dtb || true
-
-          cd AnyKernel3
-          zip -r9 ../artifacts/Nokia_PL2_Mainline-Kernel.zip * -x .git README.md
-          cd ..
-
-      - name: Package Flashable boot.img with mkbootimg (Header v2)
+      - name: Package Flashable boot.img with mkbootimg (Header v0)
         run: |
           # Fetch self-contained LineageOS mkbootimg tool
           curl -sL https://raw.githubusercontent.com/LineageOS/android_system_tools_mkbootimg/lineage-18.1/mkbootimg.py -o mkbootimg.py
 
-          # Use prebuilt recovery ramdisk if present
+          # Prepare minimal ramdisk (raw/clean stub if prebuilt recovery ramdisk is omitted)
           if [ -f "prebuilts/ramdisk.cpio" ]; then
-            echo "Using prebuilt recovery ramdisk from prebuilts/ramdisk.cpio..."
+            echo "Using custom ramdisk from prebuilts/ramdisk.cpio..."
             cp prebuilts/ramdisk.cpio ramdisk.cpio
-          elif [ -f "prebuilts/boot24.img" ] || [ -f "prebuilts/boot.img" ]; then
-            BASE_IMG=$(ls prebuilts/boot24.img prebuilts/boot.img 2>/dev/null | head -n 1)
-            echo "Found base boot image: $BASE_IMG, extracting ramdisk..."
-            curl -sL https://raw.githubusercontent.com/LineageOS/android_system_tools_mkbootimg/lineage-18.1/unpack_bootimg.py -o unpack_bootimg.py || true
-            if [ -f "unpack_bootimg.py" ]; then
-              python3 unpack_bootimg.py --boot_img "$BASE_IMG" --out unpacked_boot || true
-              if [ -f "unpacked_boot/ramdisk" ]; then
-                cp unpacked_boot/ramdisk ramdisk.cpio
-              fi
-            fi
-          fi
-
-          if [ ! -f "ramdisk.cpio" ] || [ ! -s "ramdisk.cpio" ]; then
-            echo "Creating stub cpio ramdisk..."
+          else
+            echo "Creating minimal stub cpio ramdisk..."
             mkdir -p rd
             touch rd/placeholder
             (cd rd && find . | cpio -o -H newc > ../ramdisk.cpio)
@@ -159,44 +128,29 @@ jobs:
           name: build-failure-logs
           path: build_logs/
 
-      - name: Upload Artifacts
+      - name: Upload Boot Image Artifact
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: Nokia-PL2-Mainline-Artifacts
-          path: |
-            artifacts/boot.img
-            artifacts/Image.gz-dtb
-            artifacts/Image.gz
-            artifacts/sdm630-nokia-pl2.dtb
-            artifacts/Nokia_PL2_Mainline-Kernel.zip
-            build.log
+          name: Nokia-PL2-Mainline-GSI-BootImage
+          path: artifacts/boot.img
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         if: success()
         with:
-          tag_name: PL2-mainline-v${{ github.run_number }}
-          name: Nokia 6.1 (PL2) Mainline Kernel & Boot Image #${{ github.run_number }}
+          tag_name: PL2-mainline-gsi-boot-v${{ github.run_number }}
+          name: Nokia 6.1 (PL2) Mainline GSI Boot Image #${{ github.run_number }}
           body: |
-            ## Nokia 6.1 (PL2) Mainline Kernel CI Build #${{ github.run_number }}
+            ## Nokia 6.1 (PL2) Mainline GSI Boot Image #${{ github.run_number }}
 
             Target: Qualcomm Snapdragon 630 (`sdm630`) — HMD Global Nokia 6.1 (`PL2_mainline`).
             Kernel: Linux Mainline (branch `${{ github.ref_name }}`, commit `${{ github.sha }}`).
 
-            ### Artifacts Included:
-            - **`boot.img`**: Flashable Android Boot Image (Header Version 0, Base 0x00000000, Pagesize 4096, Ramdisk offset 0x01000000, cmdline configured for `sdm630-nokia-pl2`).
-              - Flash test: `fastboot boot boot.img`
-              - Permanent flash: `fastboot flash boot boot.img`
-            - **`Image.gz-dtb`**: Kernel binary with appended Nokia 6.1 DTB (`sdm630-nokia-pl2.dtb`).
-            - **`Image.gz`**: Standalone compressed ARM64 kernel binary.
-            - **`sdm630-nokia-pl2.dtb`**: Standalone compiled Device Tree Blob.
-            - **`Nokia_PL2_Mainline-Kernel.zip`**: AnyKernel3 flashable package for recovery (TWRP/OrangeFox).
+            ### Artifact:
+            - **`boot.img`**: Raw Android Boot Image for GSI Bringup (Header Version 0, Page Size 4096, cmdline configured for `sdm630-nokia-pl2`).
+              - Flash command (Slot B ONLY): `fastboot flash boot_b boot.img`
           files: |
             artifacts/boot.img
-            artifacts/Image.gz-dtb
-            artifacts/Image.gz
-            artifacts/sdm630-nokia-pl2.dtb
-            artifacts/Nokia_PL2_Mainline-Kernel.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
