@@ -181,8 +181,7 @@
 };
 
 &adreno_gpu_zap {
-	status = "disabled";
-	firmware-name = "a508_zap.mbn";
+	firmware-name = "a508_zap.mdt";
 	memory-region = <&zap_shader_region>;
 };
 
@@ -215,11 +214,9 @@
 &blsp_i2c4 {
 	status = "okay";
 
-	touchscreen@14 {
-		compatible = "goodix,gt1151";
-		reg = <0x14>;
-		vcc-supply = <&vreg_l11a_1p8>;
-		iovcc-supply = <&vreg_l11a_1p8>;
+	touchscreen@5d {
+		compatible = "goodix,gt1152", "goodix,gt1151";
+		reg = <0x5d>;
 		pinctrl-0 = <&ts_int_active &ts_rst>;
 		pinctrl-names = "default";
 		interrupt-parent = <&tlmm>;
@@ -280,9 +277,17 @@
 };
 
 &pm660l_wled {
-	default-brightness = <512>;
-
 	status = "okay";
+
+	default-brightness = <512>;
+	qcom,switching-freq = <800>;
+	qcom,ovp-millivolt = <29600>;
+	qcom,current-boost-limit = <970>;
+	qcom,current-limit-microamp = <20000>;
+	qcom,num-strings = <2>;
+
+	interrupts = <0x3 0xd8 0x2 IRQ_TYPE_EDGE_RISING>;
+	interrupt-names = "short";
 };
 
 &pm660_charger {
@@ -625,7 +630,7 @@
 	vmmc-supply = <&vreg_l5b_2p95>;
 	vqmmc-supply = <&vreg_l2b_2p95>;
 
-	status = "okay";
+	status = "disabled";
 };
 
 &sound {
