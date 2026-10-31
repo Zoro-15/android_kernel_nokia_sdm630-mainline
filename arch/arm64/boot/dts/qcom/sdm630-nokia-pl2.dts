@@ -36,10 +36,12 @@
 	};
 	
 	aliases {
+		serial0 = &blsp1_uart2;
+		serial1 = &blsp2_uart1;
 	};
 	
 	chosen {
-		stdout-path = "framebuffer0";
+		stdout-path = "serial0:115200n8";
 		bootargs = "";
 		
 		#address-cells = <2>;

@@ -111,7 +111,7 @@ jobs:
           fi
 
           # CMDLINE from device-nokia-pl2mainline/BoardConfig.mk
-          CMDLINE="androidboot.boot_devices=soc@0/c0c4000.mmc,soc/c0c4000.sdhci,c0c4000.mmc androidboot.hardware=nokia-pl2 androidboot.selinux=permissive androidboot.verifiedbootstate=orange androidboot.usbcontroller=a800000.dwc3 earlycon console=tty0 console=ttyMSM0,115200n8 clk_ignore_unused pd_ignore_unused firmware_class.path=/vendor/firmware/"
+          CMDLINE="androidboot.boot_devices=soc@0/c0c4000.mmc,soc/c0c4000.sdhci,c0c4000.mmc androidboot.hardware=nokia-pl2 androidboot.selinux=permissive androidboot.verifiedbootstate=orange androidboot.usbcontroller=a800000.usb earlycon console=tty0 console=ttyMSM0,115200n8 clk_ignore_unused pd_ignore_unused cpuidle.off=1 firmware_class.path=/vendor/firmware/"
 
           # Package boot.img: Header v0 (Mandatory for Nokia 6.1 Little Kernel aboot)
           # Uses concatenated Image.gz-dtb
