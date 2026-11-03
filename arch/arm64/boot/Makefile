@@ -17,7 +17,7 @@
 OBJCOPYFLAGS_Image :=-O binary -R .note -R .note.gnu.build-id -R .comment -S
 
 targets := Image Image.bz2 Image.gz Image.lz4 Image.lzma Image.lzo \
-	Image.zst Image.xz image.fit
+	Image.zst Image.xz image.fit Image.gz-dtb
 
 $(obj)/Image: vmlinux FORCE
 	$(call if_changed,objcopy)
@@ -27,6 +27,16 @@ $(obj)/Image.bz2: $(obj)/Image FORCE
 
 $(obj)/Image.gz: $(obj)/Image FORCE
 	$(call if_changed,gzip)
+
+$(obj)/Image.gz-dtb: $(obj)/Image.gz FORCE
+	@DTB=$$(find $(obj)/dts -name "*sdm630-nokia-pl2*.dtb" 2>/dev/null | head -n 1); \
+	if [ -n "$$DTB" ] && [ -f "$$DTB" ]; then \
+		cat $(obj)/Image.gz "$$DTB" > $@; \
+		echo "  CAT     $@"; \
+	else \
+		echo "ERROR: Could not find sdm630-nokia-pl2.dtb under $(obj)/dts" >&2; \
+		exit 1; \
+	fi
 
 $(obj)/Image.lz4: $(obj)/Image FORCE
 	$(call if_changed,lz4)
