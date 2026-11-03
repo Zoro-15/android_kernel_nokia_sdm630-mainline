@@ -176,7 +176,7 @@ endif
 
 all:	$(notdir $(KBUILD_IMAGE))
 
-image.fit: dtbs
+image.fit Image.gz-dtb: dtbs
 
 vmlinuz.efi image.fit: Image
 $(BOOT_TARGETS): vmlinux
