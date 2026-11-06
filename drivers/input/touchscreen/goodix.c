@@ -1372,8 +1372,24 @@ reset:
 			ts->reset_controller_at_probe = true;
 			goto reset;
 		}
-		dev_err(&client->dev, "I2C communication failure: %d\n", error);
-		return error;
+		/* Try alternate Goodix slave address (0x5d <-> 0x14) if initial probe fails */
+		if (client->addr == 0x5d || client->addr == 0x14) {
+			u16 alt_addr = (client->addr == 0x5d) ? 0x14 : 0x5d;
+			dev_info(&client->dev, "I2C communication failed at 0x%02x, trying alternate address 0x%02x\n",
+				 client->addr, alt_addr);
+			client->addr = alt_addr;
+			ts->reset_controller_at_probe = true;
+			error = goodix_reset(ts);
+			if (!error)
+				error = goodix_i2c_test(client);
+			if (!error)
+				dev_info(&client->dev, "Successfully detected Goodix touchscreen at alternate address 0x%02x\n",
+					 client->addr);
+		}
+		if (error) {
+			dev_err(&client->dev, "I2C communication failure: %d\n", error);
+			return error;
+		}
 	}
 
 	error = goodix_firmware_check(ts);
