@@ -1149,8 +1149,11 @@ handle_cmdline:
 #ifdef CONFIG_CMDLINE_DROP_DANGEROUS_ANDROID_OPTIONS
 	/* Quick hack - replace first character with '_' */
 	cmdline2 = strstr((const char *)cmdline, "skip_initramfs");
-	if (cmdline2)
+	if (cmdline2) {
+		/* Bootloader requested normal boot: instruct Android first-stage init */
+		strlcat((char *)cmdline, " androidboot.force_normal_boot=1", COMMAND_LINE_SIZE);
 		*cmdline2 = '_';
+	}
 	cmdline2 = strstr((const char *)cmdline, "root=");
 	if (cmdline2)
 		*cmdline2 = '_';
