@@ -152,13 +152,13 @@
 	gpio-keys {
 		compatible = "gpio-keys";
 
-		pinctrl-0 = <&vol_up_default>;
+		pinctrl-0 = <&vol_down_default>;
 		pinctrl-names = "default";
 
-		key-volup {
-			label = "Volume Up";
+		key-voldown {
+			label = "Volume Down";
 			gpios = <&pm660l_gpios 7 GPIO_ACTIVE_LOW>;
-			linux,code = <KEY_VOLUMEUP>;
+			linux,code = <KEY_VOLUMEDOWN>;
 			debounce-interval = <15>;
 			wakeup-source;
 		};
@@ -239,9 +239,11 @@
 
 		backlight = <&pm660l_wled>;
 		reset-gpios = <&tlmm 53 GPIO_ACTIVE_LOW>;
+		iovdd-gpios = <&tlmm 3 GPIO_ACTIVE_HIGH>;
+		boost-gpios = <&tlmm 62 GPIO_ACTIVE_HIGH>;
 
 		pinctrl-names = "default";
-		pinctrl-0 = <&panel_reset_gpio &panel_te_gpio>;
+		pinctrl-0 = <&panel_reset_gpio &panel_te_gpio &panel_iovdd_gpio &panel_boost_gpio>;
 
 		port {
 			panel_in: endpoint {
@@ -299,7 +301,7 @@
 };
 
 &pm660l_gpios {
-	vol_up_default: vol-up-default-state {
+	vol_down_default: vol-down-default-state {
 		pins = "gpio7";
 		function = PMIC_GPIO_FUNC_NORMAL;
 		bias-pull-up;
@@ -313,7 +315,7 @@
 };
 
 &pon_resin {
-	linux,code = <KEY_VOLUMEDOWN>;
+	linux,code = <KEY_VOLUMEUP>;
 
 	status = "okay";
 };
@@ -655,6 +657,20 @@
 		bias-pull-down;
 	};
 
+	panel_iovdd_gpio: panel-iovdd-gpio-state {
+		pins = "gpio3";
+		function = "gpio";
+		drive-strength = <8>;
+		bias-disable;
+	};
+
+	panel_boost_gpio: panel-boost-gpio-state {
+		pins = "gpio62";
+		function = "gpio";
+		drive-strength = <8>;
+		bias-disable;
+	};
+
 	ts_int_active: ts-int-active-state {
 		pins = "gpio67";
 		function = "gpio";
@@ -680,8 +696,8 @@
 	maximum-speed = "high-speed";
 	phys = <&qusb2phy0>;
 	phy-names = "usb2-phy";
-
-	dr_mode = "peripheral";
+	extcon = <&extcon_usb>;
+	dr_mode = "otg";
 };
 
 &venus {

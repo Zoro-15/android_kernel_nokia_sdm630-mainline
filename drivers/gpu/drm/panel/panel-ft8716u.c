@@ -31,6 +31,8 @@ struct mdss_dsi_ft8716u {
 	struct drm_panel panel;
 	struct mipi_dsi_device *dsi;
 	struct gpio_desc *reset_gpio;
+	struct gpio_desc *iovdd_gpio;
+	struct gpio_desc *boost_gpio;
 	const struct mdss_panel_info *info;
 };
 
@@ -213,12 +215,26 @@ static int mdss_dsi_ft8716u_prepare(struct drm_panel *panel)
 	struct device *dev = &ctx->dsi->dev;
 	int ret;
 
+	if (ctx->iovdd_gpio) {
+		gpiod_set_value_cansleep(ctx->iovdd_gpio, 1);
+		usleep_range(5000, 7000);
+	}
+
+	if (ctx->boost_gpio) {
+		gpiod_set_value_cansleep(ctx->boost_gpio, 1);
+		usleep_range(5000, 7000);
+	}
+
 	ctx->info->reset(ctx);
 
 	ret = ctx->info->on(ctx);
 	if (ret < 0) {
 		dev_err(dev, "Failed to initialize panel: %d\n", ret);
 		gpiod_set_value_cansleep(ctx->reset_gpio, 1);
+		if (ctx->boost_gpio)
+			gpiod_set_value_cansleep(ctx->boost_gpio, 0);
+		if (ctx->iovdd_gpio)
+			gpiod_set_value_cansleep(ctx->iovdd_gpio, 0);
 		return ret;
 	}
 
@@ -236,6 +252,13 @@ static int mdss_dsi_ft8716u_unprepare(struct drm_panel *panel)
 		dev_err(dev, "Failed to un-initialize panel: %d\n", ret);
 
 	gpiod_set_value_cansleep(ctx->reset_gpio, 1);
+	usleep_range(5000, 7000);
+
+	if (ctx->boost_gpio)
+		gpiod_set_value_cansleep(ctx->boost_gpio, 0);
+
+	if (ctx->iovdd_gpio)
+		gpiod_set_value_cansleep(ctx->iovdd_gpio, 0);
 
 	return 0;
 }
@@ -274,6 +297,16 @@ static int mdss_dsi_ft8716u_probe(struct mipi_dsi_device *dsi)
 	if (IS_ERR(ctx->reset_gpio))
 		return dev_err_probe(dev, PTR_ERR(ctx->reset_gpio),
 				     "Failed to get reset-gpios\n");
+
+	ctx->iovdd_gpio = devm_gpiod_get_optional(dev, "iovdd", GPIOD_OUT_LOW);
+	if (IS_ERR(ctx->iovdd_gpio))
+		return dev_err_probe(dev, PTR_ERR(ctx->iovdd_gpio),
+				     "Failed to get iovdd-gpios\n");
+
+	ctx->boost_gpio = devm_gpiod_get_optional(dev, "boost", GPIOD_OUT_LOW);
+	if (IS_ERR(ctx->boost_gpio))
+		return dev_err_probe(dev, PTR_ERR(ctx->boost_gpio),
+				     "Failed to get boost-gpios\n");
 
 	ctx->dsi = dsi;
 	mipi_dsi_set_drvdata(dsi, ctx);
