@@ -57,6 +57,13 @@
 			height = <1920>;
 			stride = <(1080 * 4)>;
 			format = "a8r8g8b8";
+			display = <&mdss>;
+			clocks = <&mmcc MDSS_AHB_CLK>,
+				 <&mmcc MDSS_AXI_CLK>,
+				 <&mmcc MDSS_MDP_CLK>,
+				 <&mmcc MDSS_BYTE0_CLK>,
+				 <&mmcc MDSS_PCLK0_CLK>;
+			power-domains = <&mmcc MDSS_GDSC>;
 			status = "okay";
 		};
 	};
@@ -74,17 +81,7 @@
 		#address-cells = <0x02>;
 		#size-cells = <0x02>;
 
-		removed_region0@85800000 {
-			reg = <0x00 0x85800000 0x00 0x3700000>;
-			no-map;
-		};
 
-		adsp_region {
-			size = <0x00 0x800000>;
-			reusable;
-			alloc-ranges = <0x00 0x00 0x00 0xffffffff>;
-			alignment = <0x00 0x400000>;
-		};
 
 		dfps_data_mem@9f7ff000 {
 			reg = <0x00 0x9f7ff000 0x00 0x1000>;
@@ -112,13 +109,6 @@
 			no-map;
 		};
 
-		venus_fw_region {
-			size = <0x00 0x800000>;
-			reusable;
-			alloc-ranges = <0x00 0x80000000 0x00 0x20000000>;
-			alignment = <0x00 0x400000>;
-		};
-
 		secure_region {
 			size = <0x00 0x5c00000>;
 			reusable;
@@ -130,14 +120,6 @@
 			reg = <0x00 0x9d400000 0x00 0x2300000>;
 			label = "cont_splash_mem";
 			no-map;
-		};
-
-		linux,cma {
-			size = <0x00 0x2000000>;
-			reusable;
-			alloc-ranges = <0x00 0x00 0x00 0xffffffff>;
-			alignment = <0x00 0x400000>;
-			linux,cma-default;
 		};
 
 		qseecom_region {
@@ -378,7 +360,7 @@
 
 		/* SDHCI 3.3V signal doesn't seem to be supported. */
 		vreg_l2b_2p95: l2 {
-			regulator-min-microvolt = <350000>;
+			regulator-min-microvolt = <1648000>;
 			regulator-max-microvolt = <2696000>; // should be <3100000>, but we set it for lower for sdhci reasons
 			regulator-enable-ramp-delay = <250>;
 			regulator-allow-set-load;
